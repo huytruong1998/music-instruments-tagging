@@ -1,0 +1,12 @@
+{
+    "data_root_path": "./openmic-2018",
+    "waveforms_path": "audio",
+    "npz_path": "openmic-2018.npz",
+    "db_path": "h5",
+    "sample_rate": 32000,
+    "n_fft": 1024,
+    "win_length": 1024,
+    "hop_length": 512,
+    "n_mels": 64,
+    "window": "blackman"
+}
