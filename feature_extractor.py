@@ -5,6 +5,7 @@ import h5py
 import csv
 import os
 import json
+import pandas as pd
 
 class FeatureExtractor:
     def __init__(self, 
@@ -36,23 +37,25 @@ class FeatureExtractor:
         keys = npz["sample_key"]
          
         self.__labels = []
-
         for idx in range(len(gt)):
             self.__labels.append((keys[idx], gt[idx] >= 0.5))
 
 
     def extract(self):
-        print("ssss")
-        wave_files = self.__waveforms_path.glob(r"[.]ogg")
+        # wave_files = self.__waveforms_path.glob("*.ogg")
+        wave_files = list(self.__waveforms_path.rglob("*.ogg"))
 
-        for wave_file in wave_files:
-            print(wave_file)
-
-
-
+        #Split train and Test
+        split_train = pd.read_csv(self.__data_root_path / 'partitions' /'split01_train.csv', 
+                          header=None).squeeze("columns")
+        split_test = pd.read_csv(self.__data_root_path / 'partitions' / 'split01_test.csv', 
+                                header=None).squeeze("columns")
+        
+        train_set = set(split_train)
+        test_set = set(split_test)
+        
+        #Extract feature and save h5
         for idx, wave_file in enumerate(wave_files):
-            print(wave_files)    
-            
             wave, sr_ = librosa.load(wave_file, sr=None)
 
             if sr_ != self.__sr:
@@ -70,12 +73,29 @@ class FeatureExtractor:
                 power=2.0,
                 n_mels=self.__n_mels
             )
-
+            
+            if wave_file.stem != self.__labels[idx][0]:
+                print("not equal __labels",self.__labels[idx][0])
+                print("not equal wave_file.stem",wave_file.stem)
+    
             self.__db_path.mkdir(666, exist_ok=True)
 
-            with h5py.File(f"{wave_file.stem}.h5", "w") as f:
+
+            if wave_file.stem in train_set:
+                h5_file_path = self.__db_path / "training" 
+            elif wave_file.stem in test_set:
+                h5_file_path = self.__db_path / "testing"
+            else:
+                # This should never happen, but better safe than sorry.
+                raise RuntimeError('Unknown sample key={}! Abort!'.format(wave_file.stem))
+            
+
+            h5_file_path.mkdir(666, exist_ok=True)
+            
+            with h5py.File(h5_file_path / f"{wave_file.stem}.h5", "w") as f:
                 f.create_dataset("melspec", data=melspec)
-                f.create_dataset("labels", data=self.__labels[idx])
+                f.create_dataset("labels", data=np.array(self.__labels[idx][1], dtype=np.uint8))
+        print("Finnish !!!")
 
                 
 
