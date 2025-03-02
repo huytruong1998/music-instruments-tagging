@@ -6,6 +6,7 @@ import csv
 import os
 import json
 import pandas as pd
+from tqdm import tqdm
 
 class FeatureExtractor:
     def __init__(self, 
@@ -55,23 +56,26 @@ class FeatureExtractor:
         test_set = set(split_test)
         
         #Extract feature and save h5
-        for idx, wave_file in enumerate(wave_files):
+        for idx, wave_file in tqdm(enumerate(wave_files), desc="Extracting pairs of melspectrograms and labels...", total=len(wave_files)):
             wave, sr_ = librosa.load(wave_file, sr=None)
 
             if sr_ != self.__sr:
                 wave = librosa.resample(y=wave, orig_sr=sr_, target_sr=self.__sr)
         
-            melspec = librosa.feature.melspectrogram(
-                y=wave, 
-                sr=self.__sr,
-                n_fft=self.__n_fft,
-                hop_length=self.__hop_length,
-                win_length=self.__win_length,
-                window=self.__window,
-                center=True,
-                pad_mode='reflect',
-                power=2.0,
-                n_mels=self.__n_mels
+            melspec = np.log10(
+                1.0 + librosa.feature.melspectrogram(
+                    y=wave, 
+                    sr=self.__sr,
+                    n_fft=self.__n_fft,
+                    hop_length=self.__hop_length,
+                    win_length=self.__win_length,
+                    window=self.__window,
+                    center=True,
+                    pad_mode='reflect',
+                    power=2.0,
+                    n_mels=self.__n_mels
+                ),
+                dtype=np.float32
             )
             
             if wave_file.stem != self.__labels[idx][0]:
@@ -79,7 +83,6 @@ class FeatureExtractor:
                 print("not equal wave_file.stem",wave_file.stem)
     
             self.__db_path.mkdir(666, exist_ok=True)
-
 
             if wave_file.stem in train_set:
                 h5_file_path = self.__db_path / "training" 
@@ -89,15 +92,12 @@ class FeatureExtractor:
                 # This should never happen, but better safe than sorry.
                 raise RuntimeError('Unknown sample key={}! Abort!'.format(wave_file.stem))
             
-
             h5_file_path.mkdir(666, exist_ok=True)
             
             with h5py.File(h5_file_path / f"{wave_file.stem}.h5", "w") as f:
                 f.create_dataset("melspec", data=melspec)
                 f.create_dataset("labels", data=np.array(self.__labels[idx][1], dtype=np.uint8))
-        print("Finnish !!!")
 
-                
 
 if __name__ == "__main__":
 
