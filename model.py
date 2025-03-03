@@ -63,16 +63,9 @@ class ConvBlock(nn.Module):
         return x
 
 class Cnn14(nn.Module):
-    def __init__(self, sample_rate, window_size, hop_size, mel_bins, fmin, fmax, classes_num):
+    def __init__(self, num_classes):
         
         super(Cnn14, self).__init__()
-
-        window = 'hann'
-        center = True
-        pad_mode = 'reflect'
-        ref = 1.0
-        amin = 1e-10
-        top_db = None
 
         # Spectrogram extractor
         # self.spectrogram_extractor = Spectrogram(n_fft=window_size, hop_length=hop_size, 
@@ -98,28 +91,28 @@ class Cnn14(nn.Module):
         self.conv_block6 = ConvBlock(in_channels=1024, out_channels=2048)
 
         self.fc1 = nn.Linear(2048, 2048, bias=True)
-        # self.fc_audioset = nn.Linear(2048, classes_num, bias=True)
+        self.fc2 = nn.Linear(2048, num_classes, bias=True)
         
         self.init_weight()
 
     def init_weight(self):
         init_bn(self.bn0)
         init_layer(self.fc1)
-        init_layer(self.fc_audioset)
+        init_layer(self.fc2)
  
-    def forward(self, input):
+    def forward(self, x: torch.Tensor):
         """
         Input: (batch_size, data_length)"""
 
-        x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
-        x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
+        # x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
+        # x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
 
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
         
-        if self.training:
-            x = self.spec_augmenter(x)
+        # if self.training:
+        #     x = self.spec_augmenter(x)
 
         x = self.conv_block1(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
@@ -141,7 +134,7 @@ class Cnn14(nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
         x = F.relu_(self.fc1(x))
         embedding = F.dropout(x, p=0.5, training=self.training)
-        clipwise_output = torch.sigmoid(self.fc_audioset(x))
+        clipwise_output = torch.sigmoid(self.fc2(x))
         
         output_dict = {'clipwise_output': clipwise_output, 'embedding': embedding}
 

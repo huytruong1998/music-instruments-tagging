@@ -1,0 +1,13 @@
+{
+    "learning_rate": 1e-3,
+    "db_path": "./openmic-2018/h5",
+    "train_split": "training",
+    "test_split": "testing",
+    "max_epochs": 200,
+    "batch_size": 32,
+    "checkpoint_period": 10,
+    "patience": 50,
+    "prediction_threshold": 0.5,
+    "num_classes": 20,
+    "checkpoint_path": "./checkpoints"
+}

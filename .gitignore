@@ -1,2 +1,4 @@
 /openmic-2018
 /.vscode
+/checkpoints
+/__pycache__
