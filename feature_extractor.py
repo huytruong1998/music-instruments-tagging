@@ -34,12 +34,16 @@ class FeatureExtractor:
 
         npz = np.load(Path(data_root_path, npz_path), allow_pickle=True)
 
-        gt = npz["Y_true"]
+        y_true = npz["Y_true"]
+        y_mask = npz["Y_mask"]
+
+        valid_labels = np.where(y_mask, y_true, 0)
+
         keys = npz["sample_key"]
          
         self.__labels = []
-        for idx in range(len(gt)):
-            self.__labels.append((keys[idx], gt[idx] >= 0.5))
+        for idx in range(len(valid_labels)):
+            self.__labels.append((keys[idx], (valid_labels[idx] >= 0.5).astype(int)))
 
 
     def extract(self):
@@ -96,7 +100,7 @@ class FeatureExtractor:
             
             with h5py.File(h5_file_path / f"{wave_file.stem}.h5", "w") as f:
                 f.create_dataset("melspec", data=melspec)
-                f.create_dataset("labels", data=np.array(self.__labels[idx][1], dtype=np.uint8))
+                f.create_dataset("labels", self.__labels[idx][1])
 
 
 if __name__ == "__main__":
