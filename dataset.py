@@ -6,9 +6,12 @@ import numpy as np
 
 class OpenMICDataset(Dataset):
 
-    def __init__(self, db_path: Path, split: str, lim: int, in_mem: bool):
+    def __init__(self, db_path: Path, split: str, lim: int = 0, in_mem: bool = False):
         
-        self.__db_filenames: list = list((db_path / split).glob(r"*[.]h5"))[:lim]
+        self.__db_filenames: list = list((db_path / split).glob(r"*[.]h5"))
+        if lim != 0:
+            self.__db_filenames = self.__db_filenames[:lim]
+
         self.__in_mem = in_mem
 
         if in_mem:

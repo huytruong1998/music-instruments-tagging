@@ -5,7 +5,7 @@ from dataset import OpenMICDataset
 import json
 from pathlib import Path
 from model import Cnn14
-from torch import cuda, no_grad, Tensor, sum, float32, uint8, unsqueeze, save
+from torch import cuda, no_grad, Tensor, sum, float32, uint8, unsqueeze, save, load, logical_and, nan_to_num
 from tqdm import tqdm
 import numpy as np
 import shutil
@@ -55,8 +55,10 @@ def test(dl_test, criterion, model, device, num_classes, ckpt_path: Path, predic
         
         test_loss = []
         test_acc = np.array([], dtype=np.float32)
+        test_precision = np.array([], dtype=np.float32)
+        test_recall = np.array([], dtype=np.float32)
 
-        for x, y in dl_test:
+        for x, y in tqdm(dl_test, desc="Running inference on test samples..."):
             x: Tensor = x.to(device)
 
             x = x.unsqueeze(1).transpose(2, 3)
@@ -73,25 +75,49 @@ def test(dl_test, criterion, model, device, num_classes, ckpt_path: Path, predic
 
             acc = (y_pred_thr == y).to(uint8)
 
+            TP = (logical_and(y_pred_thr == 1, y == 1)).to(uint8)
+            FN = (logical_and(y_pred_thr == 0, y == 1)).to(uint8)
+            FP = (logical_and(y_pred_thr == 1, y == 0)).to(uint8)
+
+            count_TP = sum(TP, dim=1).cpu()
+            count_FN = sum(FN, dim=1).cpu()
+            count_FP = sum(FP, dim=1).cpu()
+
+            R = nan_to_num(count_TP / (count_TP + count_FN), nan=1)
+            P = nan_to_num(count_TP / (count_TP + count_FP), nan=1)
+
             acc = sum(acc, dim=1) / num_classes
 
             test_acc = np.concatenate([test_acc, acc.cpu().numpy()])
+            test_precision = np.concatenate([test_precision, P.cpu().numpy()])
+            test_recall = np.concatenate([test_recall, R.cpu().numpy()])
 
         test_loss = np.mean(test_loss)
-        test_acc = test_acc.mean() * 100.0
+
+        min_test_precision = test_precision.min() * 100.0
+        avg_test_precision = test_precision.mean() * 100.0
+
+        min_test_recall = test_recall.min() * 100.0
+        avg_test_recall = test_recall.mean() * 100.0
+
+        min_test_acc = test_acc.min() * 100.0
+        avg_test_acc = test_acc.mean() * 100.0
 
         print(f"Loss: {test_loss:.4f}")
-        print(f"Accuracy: {test_acc:.2f}%")
 
-        if test_acc > MAX_TEST_ACC or (test_acc == MAX_TEST_ACC and test_loss < MIN_TEST_LOSS):
-            MAX_TEST_ACC = test_acc
+        print(f"Precision: MIN = {min_test_precision:.2f}% AVG = {avg_test_precision:.2f}%")
+        print(f"Recall: MIN = {min_test_recall:.2f}% AVG = {avg_test_recall:.2f}%")
+        print(f"Accuracy: MIN = {min_test_acc:.2f}% AVG = {avg_test_acc:.2f}%")
+
+        if avg_test_acc > MAX_TEST_ACC or (avg_test_acc == MAX_TEST_ACC and test_loss < MIN_TEST_LOSS):
+            MAX_TEST_ACC = avg_test_acc
             MIN_TEST_LOSS = test_loss
 
             ckpt_path.mkdir(666, exist_ok=True)
 
             save(
                 model.state_dict(),
-                ckpt_path / f"ckpt-{epoch}-{test_acc:.2f}-{datetime.now().replace(microsecond=0).isoformat().replace(':', '.')}.pt"
+                ckpt_path / f"ckpt-{epoch}-{avg_test_recall:.2f}-{datetime.now().replace(microsecond=0).isoformat().replace(':', '.')}.pt"
             )
 
 
@@ -118,8 +144,8 @@ if __name__ == "__main__":
     prediction_threshold = float(config["prediction_threshold"])
     ckpt_period = int(config["checkpoint_period"])
 
-    ds_train = OpenMICDataset(db_path, train_split, lim=500, in_mem=True)
-    ds_test = OpenMICDataset(db_path, test_split, lim=50, in_mem=True)
+    ds_train = OpenMICDataset(db_path, train_split, lim=batch_size*50, in_mem=True)
+    ds_test = OpenMICDataset(db_path, test_split, in_mem=False)
 
     dl_train = DataLoader(
         ds_train, 
@@ -134,6 +160,9 @@ if __name__ == "__main__":
     )
 
     model = Cnn14(num_classes)
+
+    # model.load_state_dict(load("./checkpoints/ckpt-40-97.00-2025-03-04T12.45.53.pt", weights_only=False))
+
     model = model.to(device)
 
     criterion = BCELoss()
@@ -141,3 +170,4 @@ if __name__ == "__main__":
     optimizer = Adam(model.parameters(), lr)
 
     train(dl_train, dl_test, max_epochs, criterion, optimizer, model, device, num_classes, ckpt_path, ckpt_period, prediction_threshold, MIN_TEST_LOSS, MAX_TEST_ACC)
+

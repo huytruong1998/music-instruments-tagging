@@ -100,7 +100,7 @@ class FeatureExtractor:
             
             with h5py.File(h5_file_path / f"{wave_file.stem}.h5", "w") as f:
                 f.create_dataset("melspec", data=melspec)
-                f.create_dataset("labels", self.__labels[idx][1])
+                f.create_dataset("labels", data=self.__labels[idx][1])
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 {
-    "learning_rate": 1e-3,
+    "learning_rate": 1e-4,
     "db_path": "./openmic-2018/h5",
     "train_split": "training",
     "test_split": "testing",
-    "max_epochs": 200,
+    "max_epochs": 100,
     "batch_size": 32,
     "checkpoint_period": 10,
     "patience": 50,
