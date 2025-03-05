@@ -12,6 +12,21 @@ from tqdm import tqdm
 def vec_to_labels(vec, labels):
     return labels[vec == 1]
 
+def power_to_db(input):
+    r"""Power to db, this function is the pytorch implementation of 
+    librosa.power_to_lb
+    """
+    ref_value = 1.0
+    top_db = 80.0
+    eps = 1e-10
+
+    log_melspec: np.ndarray = 10.0 * np.log10(np.clip(input, a_min=eps, a_max=np.inf))
+    log_melspec -= 10.0 * np.log10(np.maximum(eps, ref_value))
+
+    log_melspec = np.clip(log_melspec, a_min=log_melspec.max() - top_db, a_max=np.inf)
+
+    return log_melspec
+
 if __name__ == "__main__":
 
     device = "cuda" if cuda.is_available() else "cpu"
@@ -19,7 +34,7 @@ if __name__ == "__main__":
 
     model = Cnn14(20)
     
-    model.load_state_dict(load("./checkpoints/ckpt-30-0.092-71.16-2025-03-04T22.53.58.pt", weights_only=False))
+    model.load_state_dict(load("./checkpoints/ckpt-10-0.102-66.24-2025-03-05T16.45.43.pt", weights_only=False))
 
     model = model.to(device)
 
@@ -68,21 +83,45 @@ if __name__ == "__main__":
             if sr != target_sr:
                 librosa.resample(wave, orig_sr=sr, target_sr=target_sr)
             
-            melspec = np.log10(
-                1.0 + librosa.feature.melspectrogram(
-                    y=wave, 
-                    sr=target_sr,
-                    n_fft=n_fft,
-                    hop_length=hop_length,
-                    win_length=win_length,
-                    window=window,
-                    center=True,
-                    pad_mode='reflect',
-                    power=2.0,
-                    n_mels=n_mels
-                ),
-                dtype=np.float32
-            )
+
+            spec = librosa.stft(
+                wave, 
+                n_fft=n_fft,
+                hop_length=hop_length,
+                win_length=win_length,
+                window=window,
+                center=True,
+                pad_mode='reflect'
+            ).T
+
+            spec = spec.real ** 2 + spec.imag ** 2
+
+            mel = librosa.filters.mel(
+                n_fft=n_fft,
+                sr=sr,
+                n_mels=n_mels,
+                fmin=0.0,
+                fmax=None
+            ).T
+
+            melspec = power_to_db(spec @ mel)
+            
+            # OG feats
+            # melspec = np.log10(
+            #     1.0 + librosa.feature.melspectrogram(
+            #         y=wave, 
+            #         sr=target_sr,
+            #         n_fft=n_fft,
+            #         hop_length=hop_length,
+            #         win_length=win_length,
+            #         window=window,
+            #         center=True,
+            #         pad_mode='reflect',
+            #         power=2.0,
+            #         n_mels=n_mels
+            #     ),
+            #     dtype=np.float32
+            # )
             
             melspec = from_numpy(melspec).unsqueeze(0)
 
