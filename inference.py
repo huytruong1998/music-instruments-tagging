@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     model = Cnn14(20)
     
-    model.load_state_dict(load("./checkpoints/ckpt-40-0.19-59.68-2025-03-04T16.24.42.pt", weights_only=False))
+    model.load_state_dict(load("./checkpoints/ckpt-30-0.092-71.16-2025-03-04T22.53.58.pt", weights_only=False))
 
     model = model.to(device)
 
@@ -86,7 +86,11 @@ if __name__ == "__main__":
             
             melspec = from_numpy(melspec).unsqueeze(0)
 
-            melspec = melspec.unsqueeze(1).transpose(2, 3).to(device)
+            # dB feats
+            melspec = melspec.unsqueeze(1).to(device)
+
+            # OG feats
+            # melspec = melspec.unsqueeze(1).transpose(2, 3).to(device)
 
             pred_vec = model(melspec)["clipwise_output"].cpu().squeeze(0)
 

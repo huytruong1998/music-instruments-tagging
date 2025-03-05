@@ -46,6 +46,22 @@ class FeatureExtractor:
             self.__labels.append((keys[idx], (valid_labels[idx] >= 0.5).astype(int)))
 
 
+    def power_to_db(self, input):
+        r"""Power to db, this function is the pytorch implementation of 
+        librosa.power_to_lb
+        """
+        ref_value = 1.0
+        top_db = 80.0
+        eps = 1e-10
+
+        log_melspec: np.ndarray = 10.0 * np.log10(np.clip(input, a_min=eps, a_max=np.inf))
+        log_melspec -= 10.0 * np.log10(np.maximum(eps, ref_value))
+
+        log_melspec = np.clip(log_melspec, a_min=log_melspec.max() - top_db, a_max=np.inf)
+
+        return log_melspec
+    
+
     def extract(self):
         # wave_files = self.__waveforms_path.glob("*.ogg")
         wave_files = list(self.__waveforms_path.rglob("*.ogg"))
@@ -66,21 +82,44 @@ class FeatureExtractor:
             if sr_ != self.__sr:
                 wave = librosa.resample(y=wave, orig_sr=sr_, target_sr=self.__sr)
         
-            melspec = np.log10(
-                1.0 + librosa.feature.melspectrogram(
-                    y=wave, 
-                    sr=self.__sr,
-                    n_fft=self.__n_fft,
-                    hop_length=self.__hop_length,
-                    win_length=self.__win_length,
-                    window=self.__window,
-                    center=True,
-                    pad_mode='reflect',
-                    power=2.0,
-                    n_mels=self.__n_mels
-                ),
-                dtype=np.float32
-            )
+            spec = librosa.stft(
+                wave, 
+                n_fft=self.__n_fft,
+                hop_length=self.__hop_length,
+                win_length=self.__win_length,
+                window=self.__window,
+                center=True,
+                pad_mode='reflect'
+            ).T
+
+            spec = spec.real ** 2 + spec.imag ** 2
+
+            mel = librosa.filters.mel(
+                n_fft=self.__n_fft,
+                sr=self.__sr,
+                n_mels=self.__n_mels,
+                fmin=0.0,
+                fmax=None
+            ).T
+
+            melspec = self.power_to_db(spec @ mel)
+
+            # OG feats
+            # melspec = np.log10(
+            #     1.0 + librosa.feature.melspectrogram(
+            #         y=wave, 
+            #         sr=self.__sr,
+            #         n_fft=self.__n_fft,
+            #         hop_length=self.__hop_length,
+            #         win_length=self.__win_length,
+            #         window=self.__window,
+            #         center=True,
+            #         pad_mode='reflect',
+            #         power=2.0,
+            #         n_mels=self.__n_mels
+            #     ),
+            #     dtype=np.float32
+            # )
             
             if wave_file.stem != self.__labels[idx][0]:
                 print("not equal __labels",self.__labels[idx][0])

@@ -25,7 +25,11 @@ def train(dl_train, dl_test, max_epochs, criterion, optimizer, model, device, nu
 
             x: Tensor = x.to(device)
 
-            x = x.unsqueeze(1).transpose(2, 3)
+            # dB feats
+            x = x.unsqueeze(1)
+
+            # OG feats
+            # x = x.unsqueeze(1).transpose(2, 3)
 
             y: Tensor = y.to(device)
 
@@ -61,7 +65,11 @@ def test(dl_test, criterion, model, device, num_classes, ckpt_path: Path, predic
         for x, y in tqdm(dl_test, desc="Running inference on test samples..."):
             x: Tensor = x.to(device)
 
-            x = x.unsqueeze(1).transpose(2, 3)
+            # dB feats
+            x = x.unsqueeze(1)
+
+            # OG feats
+            # x = x.unsqueeze(1).transpose(2, 3)
 
             y: Tensor = y.to(device)
 
@@ -117,7 +125,7 @@ def test(dl_test, criterion, model, device, num_classes, ckpt_path: Path, predic
 
             save(
                 model.state_dict(),
-                ckpt_path / f"ckpt-{epoch}-{avg_test_recall:.2f}-{datetime.now().replace(microsecond=0).isoformat().replace(':', '.')}.pt"
+                ckpt_path / f"ckpt-{epoch}-{test_loss:.3f}-{avg_test_recall:.2f}-{datetime.now().replace(microsecond=0).isoformat().replace(':', '.')}.pt"
             )
 
 
@@ -145,7 +153,7 @@ if __name__ == "__main__":
     ckpt_period = int(config["checkpoint_period"])
 
     ds_train = OpenMICDataset(db_path, train_split, lim=batch_size*50, in_mem=True)
-    ds_test = OpenMICDataset(db_path, test_split, in_mem=False)
+    ds_test = OpenMICDataset(db_path, test_split, lim=batch_size*16, in_mem=False)
 
     dl_train = DataLoader(
         ds_train, 
@@ -160,8 +168,15 @@ if __name__ == "__main__":
     )
 
     model = Cnn14(num_classes)
+    model_dict = model.state_dict()
 
-    # model.load_state_dict(load("./checkpoints/ckpt-40-97.00-2025-03-04T12.45.53.pt", weights_only=False))
+    pretrained_dict = load("./Cnn14_mAP=0.431.pth", map_location=device)['model']
+    
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    
+    model_dict.update(pretrained_dict)
+
+    model.load_state_dict(model_dict)
 
     model = model.to(device)
 
