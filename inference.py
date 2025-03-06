@@ -1,4 +1,4 @@
-from torch import load, cuda, from_numpy, no_grad, float32
+from torch import load, cuda, from_numpy, no_grad, float32, logical_and, nan_to_num, uint8, sum
 from model import Cnn14
 import json
 import numpy as np
@@ -34,7 +34,9 @@ if __name__ == "__main__":
 
     model = Cnn14(20)
     
-    model.load_state_dict(load("./checkpoints/ckpt-10-0.102-66.24-2025-03-05T16.45.43.pt", weights_only=False))
+    model_name = 'transfer-full-1e-4-0.081-78.57'
+
+    model.load_state_dict(load(f"./checkpoints/{model_name}.pt", weights_only=False))
 
     model = model.to(device)
 
@@ -66,8 +68,9 @@ if __name__ == "__main__":
     tgt_path = Path("./resources/source")
     results_path = Path("./resources/results")
 
-    results_file = open(results_path / "results.txt", mode="+at")
+    results_file = open(results_path / f"results-{model_name}.txt", mode="+at")
 
+    # For copying the test split audio files to a single location
     # print(split_test)
     # for filename in list(ds_path.rglob(r"*[.]ogg")):
 
@@ -133,6 +136,7 @@ if __name__ == "__main__":
 
             pred_vec = model(melspec)["clipwise_output"].cpu().squeeze(0)
 
+            # Modify prediction threshold for experimentation
             pred_vec_thr = (pred_vec > 0.5).to(float32)
 
             pred_lb = vec_to_labels(pred_vec_thr.numpy(), labels)

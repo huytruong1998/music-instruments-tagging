@@ -116,7 +116,7 @@ def test(dl_test, criterion, model, device, num_classes, ckpt_path: Path, predic
         print(f"Precision: MIN = {min_test_precision:.2f}% AVG = {avg_test_precision:.2f}%")
         print(f"Recall: MIN = {min_test_recall:.2f}% AVG = {avg_test_recall:.2f}%")
         print(f"Accuracy: MIN = {min_test_acc:.2f}% AVG = {avg_test_acc:.2f}%")
-
+        
         if avg_test_acc > MAX_TEST_ACC or (avg_test_acc == MAX_TEST_ACC and test_loss < MIN_TEST_LOSS):
             MAX_TEST_ACC = avg_test_acc
             MIN_TEST_LOSS = test_loss
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     ckpt_period = int(config["checkpoint_period"])
 
     ds_train = OpenMICDataset(db_path, train_split, lim=batch_size*50, in_mem=True)
-    ds_test = OpenMICDataset(db_path, test_split, lim=batch_size*16, in_mem=False)
+    ds_test = OpenMICDataset(db_path, test_split, in_mem=True)
 
     dl_train = DataLoader(
         ds_train, 
@@ -168,15 +168,22 @@ if __name__ == "__main__":
     )
 
     model = Cnn14(num_classes)
-    model_dict = model.state_dict()
 
-    pretrained_dict = load("./Cnn14_mAP=0.431.pth", map_location=device)['model']
-    
-    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
-    
-    model_dict.update(pretrained_dict)
+    model_name = 'transfer-full-2e-5-0.074-78.18'
 
-    model.load_state_dict(model_dict)
+    model.load_state_dict(load(f"./checkpoints/{model_name}.pt", weights_only=False))
+
+    # For fine-tuning
+
+    # model_dict = model.state_dict()
+
+    # pretrained_dict = load("./Cnn14_mAP=0.431.pth", map_location=device)['model']
+    
+    # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+    
+    # model_dict.update(pretrained_dict)
+
+    # model.load_state_dict(model_dict)
 
     model = model.to(device)
 
@@ -185,4 +192,5 @@ if __name__ == "__main__":
     optimizer = Adam(model.parameters(), lr)
 
     train(dl_train, dl_test, max_epochs, criterion, optimizer, model, device, num_classes, ckpt_path, ckpt_period, prediction_threshold, MIN_TEST_LOSS, MAX_TEST_ACC)
+    # test(dl_test, criterion, model, device, num_classes, ckpt_path, prediction_threshold, MIN_TEST_LOSS, MAX_TEST_ACC, 0)
 
