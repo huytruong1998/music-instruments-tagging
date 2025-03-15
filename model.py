@@ -1,9 +1,19 @@
+# Code adapted from the repository: 
+#     'PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition'
+#     https://github.com/qiuqiangkong/audioset_tagging_cnn/tree/master
+
+# Original paper:
+#     Qiuqiang Kong, Yin Cao, Turab Iqbal, Yuxuan Wang, Wenwu Wang, and Mark D. Plumbley. 
+#     "Panns: Large-scale pretrained audio neural networks for audio pattern recognition." 
+#     IEEE/ACM Transactions on Audio, Speech, and Language Processing 28 (2020): 2880-2894.
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 def init_layer(layer):
-    """Initialize a Linear or Convolutional layer. """
+    # Initialize a Linear or Convolutional layer.
+
     nn.init.xavier_uniform_(layer.weight)
  
     if hasattr(layer, 'bias'):
@@ -12,7 +22,8 @@ def init_layer(layer):
             
     
 def init_bn(bn):
-    """Initialize a Batchnorm layer. """
+    # Initialize a Batchnorm layer.
+
     bn.bias.data.fill_(0.)
     bn.weight.data.fill_(1.)
 
@@ -67,20 +78,6 @@ class Cnn14(nn.Module):
         
         super(Cnn14, self).__init__()
 
-        # Spectrogram extractor
-        # self.spectrogram_extractor = Spectrogram(n_fft=window_size, hop_length=hop_size, 
-        #     win_length=window_size, window=window, center=center, pad_mode=pad_mode, 
-        #     freeze_parameters=True)
-
-        # # Logmel feature extractor
-        # self.logmel_extractor = LogmelFilterBank(sr=sample_rate, n_fft=window_size, 
-        #     n_mels=mel_bins, fmin=fmin, fmax=fmax, ref=ref, amin=amin, top_db=top_db, 
-        #     freeze_parameters=True)
-
-        # # Spec augmenter
-        # self.spec_augmenter = SpecAugmentation(time_drop_width=64, time_stripes_num=2, 
-        #     freq_drop_width=8, freq_stripes_num=2)
-
         self.bn0 = nn.BatchNorm2d(64)
 
         self.conv_block1 = ConvBlock(in_channels=1, out_channels=64)
@@ -101,19 +98,12 @@ class Cnn14(nn.Module):
         init_layer(self.fc2)
  
     def forward(self, x: torch.Tensor):
-        """
-        Input: (batch_size, data_length)"""
-
-        # x = self.spectrogram_extractor(input)   # (batch_size, 1, time_steps, freq_bins)
-        # x = self.logmel_extractor(x)    # (batch_size, 1, time_steps, mel_bins)
+        # Input: (batch_size, data_length)
 
         x = x.transpose(1, 3)
         x = self.bn0(x)
         x = x.transpose(1, 3)
         
-        # if self.training:
-        #     x = self.spec_augmenter(x)
-
         x = self.conv_block1(x, pool_size=(2, 2), pool_type='avg')
         x = F.dropout(x, p=0.2, training=self.training)
         x = self.conv_block2(x, pool_size=(2, 2), pool_type='avg')

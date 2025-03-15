@@ -2,8 +2,6 @@ import librosa
 import numpy as np
 from pathlib import Path
 import h5py
-import csv
-import os
 import json
 import pandas as pd
 from tqdm import tqdm
@@ -47,15 +45,11 @@ class FeatureExtractor:
 
 
     def power_to_db(self, input):
-        r"""Power to db, this function is the pytorch implementation of 
-        librosa.power_to_lb
-        """
-        ref_value = 1.0
         top_db = 80.0
         eps = 1e-10
 
         log_melspec: np.ndarray = 10.0 * np.log10(np.clip(input, a_min=eps, a_max=np.inf))
-        log_melspec -= 10.0 * np.log10(np.maximum(eps, ref_value))
+        log_melspec -= 10.0 * np.log10(np.maximum(eps, 1.0))
 
         log_melspec = np.clip(log_melspec, a_min=log_melspec.max() - top_db, a_max=np.inf)
 
@@ -63,10 +57,9 @@ class FeatureExtractor:
     
 
     def extract(self):
-        # wave_files = self.__waveforms_path.glob("*.ogg")
         wave_files = list(self.__waveforms_path.rglob("*.ogg"))
 
-        #Split train and Test
+        # Split train and Test
         split_train = pd.read_csv(self.__data_root_path / 'partitions' /'split01_train.csv', 
                           header=None).squeeze("columns")
         split_test = pd.read_csv(self.__data_root_path / 'partitions' / 'split01_test.csv', 
@@ -75,13 +68,14 @@ class FeatureExtractor:
         train_set = set(split_train)
         test_set = set(split_test)
         
-        #Extract feature and save h5
+        # Extract feature and save h5
         for idx, wave_file in tqdm(enumerate(wave_files), desc="Extracting pairs of melspectrograms and labels...", total=len(wave_files)):
             wave, sr_ = librosa.load(wave_file, sr=None)
 
             if sr_ != self.__sr:
                 wave = librosa.resample(y=wave, orig_sr=sr_, target_sr=self.__sr)
         
+            # New Features
             spec = librosa.stft(
                 wave, 
                 n_fft=self.__n_fft,
@@ -104,7 +98,7 @@ class FeatureExtractor:
 
             melspec = self.power_to_db(spec @ mel)
 
-            # OG feats
+            # Original features
             # melspec = np.log10(
             #     1.0 + librosa.feature.melspectrogram(
             #         y=wave, 

@@ -6,26 +6,23 @@ import librosa
 from pathlib import Path
 from feature_extractor import FeatureExtractor
 import pandas as pd 
-import shutil
 from tqdm import tqdm 
 
 def vec_to_labels(vec, labels):
     return labels[vec == 1]
 
+
 def power_to_db(input):
-    r"""Power to db, this function is the pytorch implementation of 
-    librosa.power_to_lb
-    """
-    ref_value = 1.0
     top_db = 80.0
     eps = 1e-10
 
     log_melspec: np.ndarray = 10.0 * np.log10(np.clip(input, a_min=eps, a_max=np.inf))
-    log_melspec -= 10.0 * np.log10(np.maximum(eps, ref_value))
+    log_melspec -= 10.0 * np.log10(np.maximum(eps, 1.0))
 
     log_melspec = np.clip(log_melspec, a_min=log_melspec.max() - top_db, a_max=np.inf)
 
     return log_melspec
+
 
 if __name__ == "__main__":
 
@@ -109,7 +106,7 @@ if __name__ == "__main__":
 
             melspec = power_to_db(spec @ mel)
             
-            # OG feats
+            # Original feats
             # melspec = np.log10(
             #     1.0 + librosa.feature.melspectrogram(
             #         y=wave, 
@@ -128,10 +125,10 @@ if __name__ == "__main__":
             
             melspec = from_numpy(melspec).unsqueeze(0)
 
-            # dB feats
+            # New feats
             melspec = melspec.unsqueeze(1).to(device)
 
-            # OG feats
+            # Original feats
             # melspec = melspec.unsqueeze(1).transpose(2, 3).to(device)
 
             pred_vec = model(melspec)["clipwise_output"].cpu().squeeze(0)

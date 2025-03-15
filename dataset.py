@@ -1,7 +1,6 @@
 from torch.utils.data import Dataset
 from pathlib import Path
 import h5py
-from tqdm import tqdm
 import numpy as np
 
 class OpenMICDataset(Dataset):

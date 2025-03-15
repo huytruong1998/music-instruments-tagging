@@ -25,10 +25,10 @@ def train(dl_train, dl_test, max_epochs, criterion, optimizer, model, device, nu
 
             x: Tensor = x.to(device)
 
-            # dB feats
+            # New feats
             x = x.unsqueeze(1)
 
-            # OG feats
+            # Original feats
             # x = x.unsqueeze(1).transpose(2, 3)
 
             y: Tensor = y.to(device)
@@ -65,10 +65,10 @@ def test(dl_test, criterion, model, device, num_classes, ckpt_path: Path, predic
         for x, y in tqdm(dl_test, desc="Running inference on test samples..."):
             x: Tensor = x.to(device)
 
-            # dB feats
+            # New feats
             x = x.unsqueeze(1)
 
-            # OG feats
+            # Original feats
             # x = x.unsqueeze(1).transpose(2, 3)
 
             y: Tensor = y.to(device)
@@ -173,16 +173,14 @@ if __name__ == "__main__":
 
     model.load_state_dict(load(f"./checkpoints/{model_name}.pt", weights_only=False))
 
-    # For fine-tuning
+    # For training from pre-trained, use new features
 
     # model_dict = model.state_dict()
 
-    # pretrained_dict = load("./Cnn14_mAP=0.431.pth", map_location=device)['model']
-    
+    # pretrained_dict = load("./Cnn14_mAP=0.431.pth", map_location=device)['model']    
     # pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
     
     # model_dict.update(pretrained_dict)
-
     # model.load_state_dict(model_dict)
 
     model = model.to(device)
@@ -192,5 +190,6 @@ if __name__ == "__main__":
     optimizer = Adam(model.parameters(), lr)
 
     train(dl_train, dl_test, max_epochs, criterion, optimizer, model, device, num_classes, ckpt_path, ckpt_period, prediction_threshold, MIN_TEST_LOSS, MAX_TEST_ACC)
+    
     # test(dl_test, criterion, model, device, num_classes, ckpt_path, prediction_threshold, MIN_TEST_LOSS, MAX_TEST_ACC, 0)
 
