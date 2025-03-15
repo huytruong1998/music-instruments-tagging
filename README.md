@@ -10,15 +10,19 @@ The tags should be applied based on the instrument-specific
 sounds that were detected at any point within an audio clip.
 
 Contains code for:
-    - Extracting features from .wav files as h5py dumps before training;
-    - The model training itself;
-    - Inference and generating results in a reader-friendly format;
-As well as documentation on the data used, results and observations.
+
+- Extracting features from .wav files as h5py dumps before training;
+- The model training itself;
+- Inference and generating results in a reader-friendly format;
+
+as well as documentation on the data used, results and observations.
 
 Citations:
 
 \[1\] Qiuqiang Kong, Yin Cao, Turab Iqbal, Yuxuan Wang, Wenwu Wang, and Mark D. Plumbley.
 "Panns: Large-scale pretrained audio neural networks for audio pattern recognition." IEEE/ACM
-Transactions on Audio, Speech, and Language Processing 28 (2020): 2880-2894.
+Transactions on Audio, Speech, and Language Processing 28 (2020): 2880-2894. - [paper](https://arxiv.org/pdf/1912.10211) [repo](https://github.com/qiuqiangkong/audioset_tagging_cnn/)
 
-\[2\] Eric J. Humphrey, Simon Durand, Brian McFee. OpenMIC-2018
+\[2\] Humphrey, Eric J., Durand, Simon, and McFee, Brian. 
+"OpenMIC-2018: An Open Dataset for Multiple Instrument Recognition." 
+in Proceedings of the 19th International Society for Music Information Retrieval Conference (ISMIR), 2018. - [paper](https://zenodo.org/records/1492445#.XsPDCRMzZTY) [repo](https://github.com/cosmir/openmic-2018)
